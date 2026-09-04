@@ -9,13 +9,17 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 final class CoreCommand implements CommandExecutor, TabCompleter {
     private static final Component PREFIX = Component.text("[Plugin Core] ", NamedTextColor.BLUE);
-    private static final List<String> ACTIONS = List.of("list", "add", "download", "update", "reload", "delete", "discord", "github", "reloadcore");
+    private static final List<String> ACTIONS = List.of("list", "add", "download", "update", "reload", "delete", "debug", "logs", "discord", "github", "reloadcore");
     private final CorePlugin core;
 
     CoreCommand(CorePlugin core) {
@@ -26,6 +30,7 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("plugincore.admin")) return reply(sender, "Administrator permission is required.");
         if (args.length == 0) return help(sender, label);
+        core.log().debug("Core command '" + args[0].toLowerCase() + "' requested by " + sender.getName() + ".");
         try {
             switch (args[0].toLowerCase()) {
                 case "list" -> reply(sender, core.operations().list());
@@ -34,6 +39,8 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
                 case "update" -> oneOrAll(sender, args, core.operations()::update, core.operations()::updateAll);
                 case "reload" -> oneOrAll(sender, args, core.operations()::reload, core.operations()::reloadAll);
                 case "delete" -> run(sender, args.length == 2 ? core.operations().delete(args[1]) : failed("Usage: /" + label + " delete <id>"));
+                case "debug" -> debug(sender, args);
+                case "logs" -> logs(sender, args);
                 case "discord" -> discord(sender, args);
                 case "github" -> github(sender, args);
                 case "reloadcore" -> reply(sender, core.restart());
@@ -93,6 +100,37 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
         reply(sender, "GitHub credentials updated.");
     }
 
+    private void debug(CommandSender sender, String[] args) {
+        if (args.length == 1 || (args.length == 2 && args[1].equalsIgnoreCase("status"))) {
+            reply(sender, "Debug logging is " + (core.logging().debugEnabled() ? "enabled" : "disabled") + ".");
+            return;
+        }
+        if (args.length != 2 || (!args[1].equalsIgnoreCase("on") && !args[1].equalsIgnoreCase("off"))) {
+            reply(sender, "Usage: /plugincore debug <on|off|status>");
+            return;
+        }
+        boolean enabled = args[1].equalsIgnoreCase("on");
+        core.logging().setDebugEnabled(enabled);
+        reply(sender, "Debug logging enabled for all core plugins: " + enabled + ".");
+    }
+
+    private void logs(CommandSender sender, String[] args) {
+        if (args.length > 2) {
+            reply(sender, "Usage: /plugincore logs [plugin]");
+            return;
+        }
+        Path directory = args.length == 2 ? core.logging().pluginDirectory(args[1]) : core.logging().directory();
+        List<String> entries;
+        try (Stream<Path> paths = Files.exists(directory) ? Files.list(directory) : Stream.empty()) {
+            entries = paths.sorted().map(path -> path.getFileName().toString() + (Files.isDirectory(path) ? "/" : "")).toList();
+        } catch (IOException error) {
+            reply(sender, "Could not read log directory: " + CorePlugin.message(error));
+            return;
+        }
+        reply(sender, "Log directory: " + directory);
+        reply(sender, entries.isEmpty() ? "No log files yet." : "Contents: " + String.join(", ", entries));
+    }
+
     private void run(CommandSender sender, CompletableFuture<String> task) {
         reply(sender, "Processing request.");
         task.whenComplete((result, error) -> core.getServer().getScheduler().runTask(core,
@@ -115,6 +153,8 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
         reply(sender, "• /" + label + " list — View registered plugins");
         reply(sender, "• /" + label + " <download|update|reload> <id|all>");
         reply(sender, "• /" + label + " delete <id> — Remove a plugin");
+        reply(sender, "• /" + label + " debug <on|off|status> — Global file debug logging");
+        reply(sender, "• /" + label + " logs [plugin] — View log directory and files");
         reply(sender, "• /" + label + " add <id> <owner/repo> <asset.jar> <plugin> [target.jar]");
         reply(sender, "• /" + label + " discord <guild-id> <bot-token> — Console only");
         reply(sender, "• /" + label + " github <token|clear> — Console only");
@@ -129,6 +169,10 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
             List<String> ids = new ArrayList<>(core.registry().all().stream().map(ManagedPlugin::id).toList());
             if (!args[0].equalsIgnoreCase("delete")) ids.add("all");
             return match(ids, args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("debug")) return match(List.of("on", "off", "status"), args[1]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("logs")) {
+            return match(core.registry().all().stream().map(ManagedPlugin::plugin).toList(), args[1]);
         }
         return List.of();
     }

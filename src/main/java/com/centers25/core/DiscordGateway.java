@@ -108,7 +108,7 @@ final class DiscordGateway extends ListenerAdapter implements DiscordService {
 
     private synchronized void publish(Guild guild) {
         if (guild == null) {
-            core.getLogger().severe("Discord bot cannot access guild " + guildId);
+            core.log().error("Discord bot cannot access guild " + guildId);
             return;
         }
         modules.values().forEach(module -> publish(guild, module));
@@ -116,7 +116,8 @@ final class DiscordGateway extends ListenerAdapter implements DiscordService {
 
     private void publish(Guild guild, Module module) {
         module.commands().forEach(command -> guild.upsertCommand(command).queue(
-                ignored -> { }, error -> module.owner().getLogger().warning("Discord command failed: " + CorePlugin.message(error))));
+                ignored -> { }, error -> core.logging().logger(module.owner())
+                        .warn("Discord command failed: " + CorePlugin.message(error), error)));
     }
 
     private void delete(Guild guild, Set<String> names) {

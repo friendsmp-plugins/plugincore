@@ -98,6 +98,7 @@ final class PluginOperations {
             return CompletableFuture.failedFuture(error);
         }
         if (!busy.add(managed.id())) return CompletableFuture.failedFuture(new IllegalStateException(managed.id() + " is busy"));
+        core.log().debug((updateOnly ? "Updating " : "Downloading ") + managed.id() + ".");
         return CompletableFuture.supplyAsync(() -> {
             Path temp = null;
             try {
@@ -117,8 +118,10 @@ final class PluginOperations {
                 registry.release(managed.id(), release.tag());
                 if (destination.equals(staged)) return managed.id() + " — staged " + release.tag() + "; restart required";
                 String loadedResult = core.main(() -> load(managed, live)).join();
+                core.log().debug("Installed " + managed.id() + " release " + release.tag() + ".");
                 return managed.id() + " — downloaded " + release.tag() + "; " + loadedResult;
             } catch (Exception error) {
+                core.log().error("Plugin transfer failed for " + managed.id() + ": " + CorePlugin.message(error), error);
                 throw new RuntimeException(CorePlugin.message(error), error);
             } finally {
                 busy.remove(managed.id());

@@ -46,6 +46,7 @@ tasks.register('apiJar', Jar) {
     archiveFileName = 'plugincore-api.jar'
     from sourceSets.main.output
     include 'com/centers25/core/discord/**'
+    include 'com/centers25/core/logging/**'
 }
 
 tasks.named('assemble') {

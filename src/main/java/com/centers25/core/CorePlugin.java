@@ -1,6 +1,8 @@
 package com.centers25.core;
 
 import com.centers25.core.discord.DiscordService;
+import com.centers25.core.logging.LoggingService;
+import com.centers25.core.logging.PluginLogger;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,11 +22,17 @@ public final class CorePlugin extends JavaPlugin {
     private GitHubClient github;
     private DiscordGateway discord;
     private DiscordBot discordModule;
+    private FileLoggingService logging;
+    private PluginLogger log;
     private Set<String> discordUsers = Set.of();
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        logging = new FileLoggingService(this);
+        getServer().getServicesManager().register(LoggingService.class, logging, this, ServicePriority.Highest);
+        log = logging.logger(this);
+        log.info("Plugin Core starting. Debug logging is " + (logging.debugEnabled() ? "enabled" : "disabled") + ".");
         pool = Executors.newVirtualThreadPerTaskExecutor();
         registry = new PluginRegistry(this);
         operations = new PluginOperations(this, registry);
@@ -41,13 +49,16 @@ public final class CorePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (log != null) log.info("Plugin Core stopping.");
         getServer().getServicesManager().unregisterAll(this);
         if (discord != null) discord.stop();
         if (pool != null) pool.shutdownNow();
+        if (logging != null) logging.close();
     }
 
     synchronized String restart() {
         reloadConfig();
+        logging.reloadSettings();
         registry.load();
         reloadClients();
         return restartBot();
@@ -63,7 +74,7 @@ public final class CorePlugin extends JavaPlugin {
             discord.start(token, guild);
             return "Plugin Core reloaded. Discord is connecting.";
         } catch (RuntimeException error) {
-            getLogger().severe("Discord failed: " + message(error));
+            log.error("Discord failed: " + message(error), error);
             return "Plugin Core reloaded. Discord connection failed: " + message(error);
         }
     }
@@ -111,6 +122,14 @@ public final class CorePlugin extends JavaPlugin {
 
     DiscordService discord() {
         return discord;
+    }
+
+    FileLoggingService logging() {
+        return logging;
+    }
+
+    PluginLogger log() {
+        return log;
     }
 
     private String env(String name, String fallback) {

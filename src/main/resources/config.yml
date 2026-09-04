@@ -4,3 +4,7 @@ discord-allowed-user-ids: []
 github-token: ''
 http-timeout-seconds: 30
 max-download-megabytes: 100
+
+logging:
+  debug: false
+  retention-days: 30

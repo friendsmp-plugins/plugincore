@@ -9,7 +9,7 @@ commands:
     description: Manage server plugins.
     aliases: [pcore]
     permission: plugincore.admin
-    usage: /plugincore <list|add|download|update|reload|delete|discord|github|reloadcore>
+    usage: /plugincore <list|add|download|update|reload|delete|debug|logs|discord|github|reloadcore>
 permissions:
   plugincore.admin:
     description: Allows server plugin management.
