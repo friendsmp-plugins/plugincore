@@ -49,15 +49,15 @@ final class PluginOperations {
             Plugin plugin = core.getServer().getPluginManager().getPlugin(managed.plugin());
             Path target = plugins().resolve(managed.file());
             if (plugin == null) {
-                if (!Files.exists(target)) return managed.id() + ": not downloaded";
+                if (!Files.exists(target)) return managed.id() + " — not installed";
                 plugin = core.getServer().getPluginManager().loadPlugin(target.toFile());
                 core.getServer().getPluginManager().enablePlugin(plugin);
-                return managed.id() + ": loaded";
+                return managed.id() + " — loaded";
             }
             core.getServer().getPluginManager().disablePlugin(plugin);
             core.getServer().getPluginManager().enablePlugin(plugin);
-            String staged = Files.exists(updates().resolve(managed.file())) ? "; staged update needs a server restart" : "";
-            return managed.id() + ": reloaded" + staged;
+            String staged = Files.exists(updates().resolve(managed.file())) ? "; restart required for staged update" : "";
+            return managed.id() + " — reloaded" + staged;
         });
     }
 
@@ -74,7 +74,7 @@ final class PluginOperations {
             boolean removed = Files.deleteIfExists(plugins().resolve(managed.file()));
             removed |= Files.deleteIfExists(updates().resolve(managed.file()));
             registry.remove(managed.id());
-            return managed.id() + ": removed from registry" + (removed ? " and deleted" : "");
+            return managed.id() + " — removed" + (removed ? "; JAR deleted" : "");
         });
     }
 
@@ -84,9 +84,9 @@ final class PluginOperations {
             Plugin plugin = core.getServer().getPluginManager().getPlugin(managed.plugin());
             String state = plugin == null ? "missing" : plugin.isEnabled() ? "enabled" : "disabled";
             if (Files.exists(updates().resolve(managed.file()))) state += ", staged";
-            lines.add(managed.id() + " [" + state + "] " + managed.repository() + " -> " + managed.file());
+            lines.add("• " + managed.id() + " — " + state + " — " + managed.repository() + " → " + managed.file());
         }
-        return lines.isEmpty() ? "No managed plugins" : String.join("\n", lines);
+        return lines.isEmpty() ? "No plugins are registered." : String.join("\n", lines);
     }
 
     private CompletableFuture<String> transfer(String id, boolean updateOnly) {
@@ -105,7 +105,7 @@ final class PluginOperations {
                 Path live = plugins().resolve(managed.file());
                 Path staged = updates().resolve(managed.file());
                 if (updateOnly && release.tag().equals(managed.release()) && (Files.exists(live) || Files.exists(staged)))
-                    return managed.id() + ": already current at " + release.tag();
+                    return managed.id() + " — current (" + release.tag() + ")";
                 boolean loaded = core.getServer().getPluginManager().getPlugin(managed.plugin()) != null;
                 Path destination = loaded || Files.exists(live) ? staged : live;
                 Files.createDirectories(destination.getParent());
@@ -115,9 +115,9 @@ final class PluginOperations {
                 move(temp, destination);
                 temp = null;
                 registry.release(managed.id(), release.tag());
-                if (destination.equals(staged)) return managed.id() + ": staged " + release.tag() + "; restart server to apply";
+                if (destination.equals(staged)) return managed.id() + " — staged " + release.tag() + "; restart required";
                 String loadedResult = core.main(() -> load(managed, live)).join();
-                return managed.id() + ": downloaded " + release.tag() + "; " + loadedResult;
+                return managed.id() + " — downloaded " + release.tag() + "; " + loadedResult;
             } catch (Exception error) {
                 throw new RuntimeException(CorePlugin.message(error), error);
             } finally {
@@ -132,7 +132,7 @@ final class PluginOperations {
 
     private CompletableFuture<String> all(Function<String, CompletableFuture<String>> action) {
         List<CompletableFuture<String>> tasks = registry.all().stream().map(plugin -> action.apply(plugin.id())
-                .exceptionally(error -> plugin.id() + ": failed: " + CorePlugin.message(error))).toList();
+                .exceptionally(error -> plugin.id() + " — failed: " + CorePlugin.message(error))).toList();
         return CompletableFuture.allOf(tasks.toArray(CompletableFuture[]::new))
                 .thenApply(ignored -> String.join("\n", tasks.stream().map(CompletableFuture::join).toList()));
     }

@@ -1,5 +1,7 @@
 package com.centers25.core;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 final class CoreCommand implements CommandExecutor, TabCompleter {
+    private static final Component PREFIX = Component.text("[Plugin Core] ", NamedTextColor.BLUE);
     private static final List<String> ACTIONS = List.of("list", "add", "download", "update", "reload", "delete", "discord", "github", "reloadcore");
     private final CorePlugin core;
 
@@ -21,8 +24,8 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!sender.hasPermission("plugincore.admin")) return reply(sender, "No permission");
-        if (args.length == 0) return reply(sender, command.getUsage());
+        if (!sender.hasPermission("plugincore.admin")) return reply(sender, "Administrator permission is required.");
+        if (args.length == 0) return help(sender, label);
         try {
             switch (args[0].toLowerCase()) {
                 case "list" -> reply(sender, core.operations().list());
@@ -34,10 +37,10 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
                 case "discord" -> discord(sender, args);
                 case "github" -> github(sender, args);
                 case "reloadcore" -> reply(sender, core.restart());
-                default -> reply(sender, command.getUsage());
+                default -> help(sender, label);
             }
         } catch (Exception error) {
-            reply(sender, "Failed: " + CorePlugin.message(error));
+            reply(sender, "Request failed: " + CorePlugin.message(error));
         }
         return true;
     }
@@ -48,13 +51,13 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
             return;
         }
         ManagedPlugin plugin = core.registry().add(args[1], args[2], args[3], args[4], args.length == 6 ? args[5] : args[3]);
-        reply(sender, "Added " + plugin.id());
+        reply(sender, "Plugin registered: " + plugin.id());
     }
 
     private void oneOrAll(CommandSender sender, String[] args, java.util.function.Function<String, CompletableFuture<String>> one,
                           java.util.function.Supplier<CompletableFuture<String>> all) {
         if (args.length != 2) {
-            reply(sender, "Specify a plugin id or all");
+            reply(sender, "Specify a plugin ID or 'all'.");
             return;
         }
         run(sender, args[1].equalsIgnoreCase("all") ? all.get() : one.apply(args[1]));
@@ -62,11 +65,11 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
 
     private void discord(CommandSender sender, String[] args) {
         if (!(sender instanceof ConsoleCommandSender)) {
-            reply(sender, "Discord credentials can only be changed from the server console");
+            reply(sender, "Discord credentials can only be changed from the server console.");
             return;
         }
         if (args.length != 3) {
-            reply(sender, "Usage: plugincore discord <guild-id> <bot-token>");
+            reply(sender, "Usage: /plugincore discord <guild-id> <bot-token>");
             return;
         }
         core.getConfig().set("discord-guild-id", args[1]);
@@ -77,23 +80,23 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
 
     private void github(CommandSender sender, String[] args) {
         if (!(sender instanceof ConsoleCommandSender)) {
-            reply(sender, "GitHub credentials can only be changed from the server console");
+            reply(sender, "GitHub credentials can only be changed from the server console.");
             return;
         }
         if (args.length != 2) {
-            reply(sender, "Usage: plugincore github <token|clear>");
+            reply(sender, "Usage: /plugincore github <token|clear>");
             return;
         }
         core.getConfig().set("github-token", args[1].equalsIgnoreCase("clear") ? "" : args[1]);
         core.saveConfig();
         core.reloadClients();
-        reply(sender, "GitHub credentials updated");
+        reply(sender, "GitHub credentials updated.");
     }
 
     private void run(CommandSender sender, CompletableFuture<String> task) {
-        reply(sender, "Working...");
+        reply(sender, "Processing request.");
         task.whenComplete((result, error) -> core.getServer().getScheduler().runTask(core,
-                () -> reply(sender, error == null ? result : "Failed: " + CorePlugin.message(error))));
+                () -> reply(sender, error == null ? result : "Request failed: " + CorePlugin.message(error))));
     }
 
     private CompletableFuture<String> failed(String message) {
@@ -101,7 +104,21 @@ final class CoreCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean reply(CommandSender sender, String message) {
-        for (String line : message.split("\n")) sender.sendMessage(line);
+        for (String line : message.split("\n")) {
+            sender.sendMessage(PREFIX.append(Component.text(line, NamedTextColor.GRAY)));
+        }
+        return true;
+    }
+
+    private boolean help(CommandSender sender, String label) {
+        reply(sender, "Commands");
+        reply(sender, "• /" + label + " list — View registered plugins");
+        reply(sender, "• /" + label + " <download|update|reload> <id|all>");
+        reply(sender, "• /" + label + " delete <id> — Remove a plugin");
+        reply(sender, "• /" + label + " add <id> <owner/repo> <asset.jar> <plugin> [target.jar]");
+        reply(sender, "• /" + label + " discord <guild-id> <bot-token> — Console only");
+        reply(sender, "• /" + label + " github <token|clear> — Console only");
+        reply(sender, "• /" + label + " reloadcore — Reload Plugin Core");
         return true;
     }
 

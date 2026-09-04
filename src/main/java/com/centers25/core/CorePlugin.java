@@ -58,13 +58,13 @@ public final class CorePlugin extends JavaPlugin {
         discordUsers = Set.copyOf(new HashSet<>(getConfig().getStringList("discord-allowed-user-ids")));
         String token = env("PLUGINCORE_DISCORD_TOKEN", getConfig().getString("discord-token", ""));
         String guild = env("PLUGINCORE_DISCORD_GUILD_ID", getConfig().getString("discord-guild-id", ""));
-        if (token.isBlank() || guild.isBlank()) return "plugincore reloaded; Discord is not configured";
+        if (token.isBlank() || guild.isBlank()) return "Plugin Core reloaded. Discord is not configured.";
         try {
             discord.start(token, guild);
-            return "plugincore reloaded; Discord is connecting";
+            return "Plugin Core reloaded. Discord is connecting.";
         } catch (RuntimeException error) {
             getLogger().severe("Discord failed: " + message(error));
-            return "plugincore reloaded; Discord failed: " + message(error);
+            return "Plugin Core reloaded. Discord connection failed: " + message(error);
         }
     }
 

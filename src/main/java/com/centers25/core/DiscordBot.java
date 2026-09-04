@@ -1,6 +1,8 @@
 package com.centers25.core;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -10,11 +12,11 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 final class DiscordBot extends ListenerAdapter {
+    private static final int EMBED_COLOR = 0x5865F2;
     private final CorePlugin core;
 
     DiscordBot(CorePlugin core) {
@@ -22,20 +24,20 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     List<CommandData> commands() {
-        OptionData id = new OptionData(OptionType.STRING, "id", "Managed plugin id", true);
-        return List.of(Commands.slash("plugins", "Manage Minecraft plugins")
+        OptionData id = new OptionData(OptionType.STRING, "id", "Plugin ID or all", true);
+        return List.of(Commands.slash("plugins", "Manage server plugins")
                 .addSubcommands(
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("list", "List managed plugins"),
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("add", "Add a plugin")
-                                .addOption(OptionType.STRING, "id", "Managed plugin id", true)
-                                .addOption(OptionType.STRING, "repository", "GitHub owner/repository", true)
-                                .addOption(OptionType.STRING, "asset", "Release JAR asset", true)
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("list", "View managed plugins"),
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("add", "Register a plugin")
+                                .addOption(OptionType.STRING, "id", "Plugin ID", true)
+                                .addOption(OptionType.STRING, "repository", "GitHub repository in owner/name format", true)
+                                .addOption(OptionType.STRING, "asset", "Release JAR filename", true)
                                 .addOption(OptionType.STRING, "plugin", "Bukkit plugin name", true)
-                                .addOption(OptionType.STRING, "file", "Target JAR name"),
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("download", "Download a plugin or all").addOptions(id),
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("update", "Update a plugin or all").addOptions(id),
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("reload", "Reload a plugin or all").addOptions(id),
-                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("delete", "Delete a plugin").addOptions(id)
+                                .addOption(OptionType.STRING, "file", "Installed JAR filename"),
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("download", "Download one or all plugins").addOptions(id),
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("update", "Update one or all plugins").addOptions(id),
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("reload", "Reload one or all plugins").addOptions(id),
+                        new net.dv8tion.jda.api.interactions.commands.build.SubcommandData("delete", "Remove a plugin").addOptions(id)
                 ));
     }
 
@@ -45,28 +47,28 @@ final class DiscordBot extends ListenerAdapter {
                 || !event.getGuild().getId().equals(core.discord().guildId())) return;
         event.deferReply(true).queue(hook -> {
             if (!allowed(event)) {
-                hook.editOriginal("Administrator permission is required.").queue();
+                reply(hook, "Access denied", "Administrator permission is required.");
                 return;
             }
             try {
                 String action = event.getSubcommandName();
                 if (action == null) throw new IllegalArgumentException("Missing action");
                 switch (action) {
-                    case "list" -> hook.editOriginal(trim(core.operations().list())).queue();
+                    case "list" -> reply(hook, "Managed plugins", core.operations().list());
                     case "add" -> {
                         String asset = option(event, "asset");
                         String file = event.getOption("file") == null ? asset : option(event, "file");
                         ManagedPlugin plugin = core.registry().add(option(event, "id"), option(event, "repository"), asset, option(event, "plugin"), file);
-                        hook.editOriginal("Added " + plugin.id()).queue();
+                        reply(hook, "Plugin registered", "Plugin: `" + plugin.id() + "`");
                     }
-                    case "download" -> execute(message -> hook.editOriginal(message).queue(), option(event, "id"), core.operations()::download, core.operations()::downloadAll);
-                    case "update" -> execute(message -> hook.editOriginal(message).queue(), option(event, "id"), core.operations()::update, core.operations()::updateAll);
-                    case "reload" -> execute(message -> hook.editOriginal(message).queue(), option(event, "id"), core.operations()::reload, core.operations()::reloadAll);
-                    case "delete" -> finish(message -> hook.editOriginal(message).queue(), core.operations().delete(option(event, "id")));
-                    default -> hook.editOriginal("Unknown action").queue();
+                    case "download" -> execute(hook, "Download complete", option(event, "id"), core.operations()::download, core.operations()::downloadAll);
+                    case "update" -> execute(hook, "Update complete", option(event, "id"), core.operations()::update, core.operations()::updateAll);
+                    case "reload" -> execute(hook, "Reload complete", option(event, "id"), core.operations()::reload, core.operations()::reloadAll);
+                    case "delete" -> finish(hook, "Plugin removed", core.operations().delete(option(event, "id")));
+                    default -> reply(hook, "Invalid action", "Select a valid plugin action.");
                 }
             } catch (Exception error) {
-                hook.editOriginal("Failed: " + CorePlugin.message(error)).queue();
+                reply(hook, "Request failed", CorePlugin.message(error));
             }
         });
     }
@@ -76,13 +78,18 @@ final class DiscordBot extends ListenerAdapter {
         return event.getUser() != null && core.discordUsers().contains(event.getUser().getId());
     }
 
-    private void execute(Consumer<String> reply, String id, Function<String, CompletableFuture<String>> one,
+    private void execute(net.dv8tion.jda.api.interactions.InteractionHook hook, String title, String id,
+                         Function<String, CompletableFuture<String>> one,
                          Supplier<CompletableFuture<String>> all) {
-        finish(reply, id.equalsIgnoreCase("all") ? all.get() : one.apply(id));
+        finish(hook, title, id.equalsIgnoreCase("all") ? all.get() : one.apply(id));
     }
 
-    private void finish(Consumer<String> reply, CompletableFuture<String> task) {
-        task.whenComplete((result, error) -> reply.accept(trim(error == null ? result : "Failed: " + CorePlugin.message(error))));
+    private void finish(net.dv8tion.jda.api.interactions.InteractionHook hook, String title,
+                        CompletableFuture<String> task) {
+        task.whenComplete((result, error) -> {
+            if (error == null) reply(hook, title, result);
+            else reply(hook, "Request failed", CorePlugin.message(error));
+        });
     }
 
     private String option(SlashCommandInteractionEvent event, String name) {
@@ -90,6 +97,18 @@ final class DiscordBot extends ListenerAdapter {
     }
 
     private String trim(String value) {
-        return value.length() <= 1900 ? value : value.substring(0, 1897) + "...";
+        return value.length() <= 3900 ? value : value.substring(0, 3897) + "...";
+    }
+
+    private void reply(net.dv8tion.jda.api.interactions.InteractionHook hook, String title, String message) {
+        hook.editOriginalEmbeds(embed(title, trim(message))).queue();
+    }
+
+    private MessageEmbed embed(String title, String message) {
+        return new EmbedBuilder()
+                .setColor(EMBED_COLOR)
+                .setTitle(title)
+                .setDescription(message)
+                .build();
     }
 }

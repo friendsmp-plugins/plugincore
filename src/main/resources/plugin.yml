@@ -6,9 +6,11 @@ author: centers25
 load: STARTUP
 commands:
   plugincore:
+    description: Manage server plugins.
     aliases: [pcore]
     permission: plugincore.admin
     usage: /plugincore <list|add|download|update|reload|delete|discord|github|reloadcore>
 permissions:
   plugincore.admin:
+    description: Allows server plugin management.
     default: op
