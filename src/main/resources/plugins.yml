@@ -1,0 +1,31 @@
+plugins:
+  armorstandlock:
+    repository: friendsmp-plugins/armorstandlock
+    asset: armorstandlock.jar
+    plugin: armorstandlock
+    file: ArmorStandLock.jar
+  creeperregen:
+    repository: friendsmp-plugins/creeperregen
+    asset: creeperregen.jar
+    plugin: creeperregen
+    file: CreeperHolesRegen.jar
+  deathbridge:
+    repository: friendsmp-plugins/deathbridge
+    asset: deathbridge.jar
+    plugin: deathbridge
+    file: DeathBridge.jar
+  givehaste:
+    repository: friendsmp-plugins/givehaste
+    asset: givehaste.jar
+    plugin: givehaste
+    file: HasteGiver.jar
+  minablespawners:
+    repository: friendsmp-plugins/minablespawners
+    asset: minablespawners.jar
+    plugin: minablespawners
+    file: TrialMiner.jar
+  whitelistplugin:
+    repository: friendsmp-plugins/whitelistplugin
+    asset: whitelistplugin.jar
+    plugin: whitelistplugin
+    file: WhitelistPlugin.jar

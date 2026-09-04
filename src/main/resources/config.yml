@@ -1,0 +1,6 @@
+discord-token: ''
+discord-guild-id: ''
+discord-allowed-user-ids: []
+github-token: ''
+http-timeout-seconds: 30
+max-download-megabytes: 100

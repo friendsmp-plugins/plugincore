@@ -1,0 +1,14 @@
+name: plugincore
+version: '${version}'
+main: com.centers25.core.CorePlugin
+api-version: '26.2'
+author: centers25
+load: STARTUP
+commands:
+  plugincore:
+    aliases: [pcore]
+    permission: plugincore.admin
+    usage: /plugincore <list|add|download|update|reload|delete|discord|github|reloadcore>
+permissions:
+  plugincore.admin:
+    default: op
