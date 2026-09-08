@@ -1,6 +1,7 @@
 package com.centers25.core;
 
 import com.centers25.core.discord.DiscordService;
+import com.centers25.core.backup.DataBackupService;
 import com.centers25.core.logging.LoggingService;
 import com.centers25.core.logging.PluginLogger;
 import org.bukkit.Bukkit;
@@ -23,6 +24,7 @@ public final class CorePlugin extends JavaPlugin {
     private DiscordGateway discord;
     private DiscordBot discordModule;
     private FileLoggingService logging;
+    private FileBackupService backups;
     private PluginLogger log;
     private Set<String> discordUsers = Set.of();
 
@@ -31,6 +33,8 @@ public final class CorePlugin extends JavaPlugin {
         saveDefaultConfig();
         logging = new FileLoggingService(this);
         getServer().getServicesManager().register(LoggingService.class, logging, this, ServicePriority.Highest);
+        backups = new FileBackupService(this);
+        getServer().getServicesManager().register(DataBackupService.class, backups, this, ServicePriority.Highest);
         log = logging.logger(this);
         log.info("Plugin Core starting. Debug logging is " + (logging.debugEnabled() ? "enabled" : "disabled") + ".");
         pool = Executors.newVirtualThreadPerTaskExecutor();
@@ -54,6 +58,7 @@ public final class CorePlugin extends JavaPlugin {
         if (discord != null) discord.stop();
         if (pool != null) pool.shutdownNow();
         if (logging != null) logging.close();
+        if (backups != null) backups.close();
     }
 
     synchronized String restart() {
