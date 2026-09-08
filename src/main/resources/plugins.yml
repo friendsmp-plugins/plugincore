@@ -19,11 +19,21 @@ plugins:
     asset: givehaste.jar
     plugin: givehaste
     file: HasteGiver.jar
+  glassremover:
+    repository: friendsmp-plugins/glassremover
+    asset: glassremover.jar
+    plugin: glassremover
+    file: GlassRemover.jar
   minablespawners:
     repository: friendsmp-plugins/minablespawners
     asset: minablespawners.jar
     plugin: minablespawners
     file: TrialMiner.jar
+  shopkeeperleaderboard:
+    repository: friendsmp-plugins/shopkeeperleaderboard
+    asset: shopkeeperleaderboard.jar
+    plugin: shopkeeperleaderboard
+    file: ShopkeeperLeaderboard.jar
   whitelistplugin:
     repository: friendsmp-plugins/whitelistplugin
     asset: whitelistplugin.jar
