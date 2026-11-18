@@ -39,3 +39,38 @@ plugins:
     asset: whitelistplugin.jar
     plugin: whitelistplugin
     file: WhitelistPlugin.jar
+  warzone:
+    repository: friendsmp-plugins/warzone
+    asset: warzone.jar
+    plugin: warzone
+    file: Warzone.jar
+  clearlag:
+    repository: friendsmp-plugins/clearlag
+    asset: clearlag.jar
+    plugin: clearlag
+    file: ClearLag.jar
+  makehorsesinvincible:
+    repository: friendsmp-plugins/makehorsesinvincible
+    asset: makehorsesinvincible.jar
+    plugin: makehorsesinvincible
+    file: MakeHorsesInvincible.jar
+  masonry:
+    repository: friendsmp-plugins/masonry
+    asset: masonry.jar
+    plugin: masonry
+    file: Masonry.jar
+  naturalregen:
+    repository: friendsmp-plugins/naturalregen
+    asset: naturalregen.jar
+    plugin: naturalregen
+    file: NaturalRegen.jar
+  spawnerfix:
+    repository: friendsmp-plugins/spawnerfix
+    asset: spawnerfix.jar
+    plugin: spawnerfix
+    file: SpawnerFix.jar
+  movefix:
+    repository: friendsmp-plugins/movefix
+    asset: movefix.jar
+    plugin: movefix
+    file: MoveFixManaged.jar
